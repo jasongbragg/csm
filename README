@@ -1,0 +1,7 @@
+Cryptic Speciation Models
+
+This package performs simulations of evolutionary radiations, along with traits evolving under Brownian motion. 'Cryptic species' can then be identified, where trait differences between lineages are less than a designated threshold.
+
+Simulations of the diversification process are based on a protracted birth-death model (see Etienne & Rosindell 2012, Systematic Biology 61, doi:10.1093/sysbio/syr091). In addition, character states for a number of traits evolve by Brownian motion in each lineage. However, the evolution of traits in nascent species is linked (strongly or weakly, depending on the value of a parameter) to trait evolution in their parent species. This leads to a measure of synchronization in trait evolution between the parent and child species, reflecting some remaining connection by gene flow, following population divergence.
+
+

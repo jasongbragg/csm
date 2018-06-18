@@ -1,0 +1,13 @@
+Package: csm
+Type: Package
+Title: Cryptic Speciation Models
+Version: 0.1
+Date: 2018-01-29
+Author: Jason G. Bragg
+Maintainer: Jason G. Bragg <jasongbragg@gmail.com>
+Description: This packages simulates process of speciation and extinction. It
+    extends previous models to represent lineages within species that are "cryptic"
+    from the perspective of taxonomy.
+License: GPL (>= 3)
+Imports: Rcpp (>= 0.12.15)
+LinkingTo: Rcpp

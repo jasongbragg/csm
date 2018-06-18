@@ -1,0 +1,66 @@
+#' Makes a lineage through time plot using output
+#' from a CSM simulation 
+#'
+#' @param csm_sim - speciation of good species [Required]
+#' @param cryptic - speciation of nascent species [Required]
+#' @return an object 
+#' @author Jason Bragg (jasongbragg@gmail.com)
+#' @export
+#' @examples
+#' \dontrun{
+#' plots <- CSMsumm(csm_sim, cryptic=TRUE)
+#' }
+
+CSMsumm <- function(csm_sim, cryptic=FALSE, tinc=0.01) {
+
+   phy <- csm_sim$csm_phy
+
+   eval_at_tinc <- function(times, tinc) {
+
+      tvals <- seq(0,1,tinc)
+      cvals <- rep(0, ((1/tinc)+1))
+      for (i in 1:length(tvals)) {
+         t <- tvals[i]
+         c <- length(which(t >= times))
+         cvals[i] <- c
+      }
+      return(cbind(tvals, cvals))
+   }
+
+
+   branchtimes  <- 1-rev(sort(as.numeric(branching.times(phy))))
+   brtime_norm  <- eval_at_tinc(branchtimes, tinc)
+ 
+
+   max_brtime <- max(brtime_norm[,2])
+
+   brtime_norm[,2]  <- brtime_norm[,2] / max_brtime
+
+   csm_summ_list = list(final_lineages=max_brtime, norm_branch_times=brtime_norm[,2])
+
+
+   if(cryptic) {
+
+      if (is.null(csm_sim$cryptic)) {
+         cat("  Cryptic taxa not identified \n")
+         return(csm_summ_list)        
+      } else {
+
+      if (length(csm_sim$cryptic) == 1) {
+         crd <- c(0,0)
+      } else {
+         crd <- csm_sim$cryptic$depths
+      }
+      crypancest   <- sort(as.numeric(1-crd))
+      cranc_norm   <- eval_at_tinc(crypancest, tinc)
+      max_cranc  <- max(cranc_norm[,2])
+      cranc_norm[,2]   <- cranc_norm[,2]  / max_cranc
+
+      csm_summ_list[[ "final_cryptic_pairs" ]] <- max_cranc
+      csm_summ_list[[  "norm_cryptic_depths" ]] <- cranc_norm[,2]
+
+   }
+ 
+   return(csm_summ_list)
+   }
+}

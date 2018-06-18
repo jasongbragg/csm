@@ -1,0 +1,200 @@
+// load Rcpp
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// randomly choose next reaction based on probabilities
+int get_reaction(double p_lam1, double p_lam2, double p_lam3, double p_mu1, double p_mu2) {
+
+    double p_inc_1; double p_inc_2; double p_inc_3; double p_inc_4; double p_inc_5;
+    p_inc_1 = p_lam1;
+    p_inc_2 = p_lam1  + p_lam2;
+    p_inc_3 = p_inc_2 + p_lam3;
+    p_inc_4 = p_inc_3 + p_mu1;
+    p_inc_5 = p_inc_4 + p_mu2;
+
+    double r_rand;
+    r_rand = R::runif(0,1) * p_inc_5;
+
+    int r;
+    r = 0;
+
+    if ( (r_rand >= 0)       && ( r_rand <  p_inc_1) ) { r = 1; } 
+    if ( (r_rand >= p_inc_1) && ( r_rand <  p_inc_2) ) { r = 2; } 
+    if ( (r_rand >= p_inc_2) && ( r_rand <  p_inc_3) ) { r = 3; } 
+    if ( (r_rand >= p_inc_3) && ( r_rand <  p_inc_4) ) { r = 4; } 
+    if ( (r_rand >= p_inc_4) && ( r_rand <= p_inc_5) ) { r = 5; } 
+
+    //Rprintf("%f ", r_rand);
+
+    return r;
+}
+
+
+// update tree object for speciation of a good species
+NumericMatrix speciation_good(NumericMatrix tree, int number_good, double t, int s) {
+
+    //Rprintf("%i ", number_good); 
+    int choose_species_random (NumericMatrix tree, int status, int max_species, int max_status) ; 
+    int parent_index = choose_species_random(tree, 2, s, number_good);
+    int s_new = s++;
+
+    tree(s_new,0) = s_new;
+    tree(s_new,1) = t;
+    tree(s_new,2) = parent_index;
+    tree(s_new,3) = 1.0;
+    tree(s_new,4) = 0.0;
+
+    return tree; 
+}
+
+// update tree object for speciation of a nascent species
+NumericMatrix speciation_nasc(NumericMatrix tree, int number_nasc, double t, int s) {
+
+    int choose_species_random (NumericMatrix tree, int status, int max_species, int max_status) ; 
+    int parent_index = choose_species_random(tree, 1, s, number_nasc);
+    int s_new = s++;
+
+    tree(s_new,0) = s_new;
+    tree(s_new,1) = t;
+    tree(s_new,2) = parent_index;
+    tree(s_new,3) = 1.0;
+    tree(s_new,4) = 0.0;
+
+    return tree;
+}
+
+// complete the speciation of a nascent species
+NumericMatrix completion_nasc(NumericMatrix tree, int number_nasc, double t, int s) {
+ 
+    int choose_species_random (NumericMatrix tree, int status, int max_species, int max_status) ; 
+    int complete_index = choose_species_random(tree, 1, s, number_nasc);
+
+    tree(complete_index,3) = 2.0;
+
+    return tree;
+}
+
+
+// update tree object for extinction of a good species
+NumericMatrix extinction_good(NumericMatrix tree, int number_good, double t, int s) {
+
+    int choose_species_random (NumericMatrix tree, int status, int max_species, int max_status) ; 
+    int extinct_index = choose_species_random(tree, 2, s, number_good);
+
+    tree(extinct_index,3) = 0.0;
+    tree(extinct_index,4) = t;
+
+    return tree; 
+}
+
+// update tree object for extinction of a nascent species
+NumericMatrix extinction_nasc(NumericMatrix tree, int number_nasc, double t, int s) {
+
+    int choose_species_random (NumericMatrix tree, int status, int max_species, int max_status) ; 
+    int extinct_index = choose_species_random(tree, 1, s, number_nasc);
+
+    tree(extinct_index,3) = 0.0;
+    tree(extinct_index,4) = t;
+
+    return tree;
+}
+
+// choose a random integer between 1 and max_value
+int choose_random_integer(int max_value) {
+   // Rprintf("%i ", max_value); 
+   double r = R::runif(0,1) * double(max_value);  
+   int    c = std::ceil(r);
+
+   // Rprintf("%i ", c);
+   return c;
+}
+
+int choose_species_random(NumericMatrix tree, int status, int max_species, int max_status) {
+
+   int choose_random_integer (int max_status) ; 
+   int rand_ind   = choose_random_integer(max_status); 
+
+   int status_count      = 0;
+   int index_parent_tree = -9;
+
+   int s = max_species;
+   // loop through species in current tree
+   for (int i=0; i<s; ++i) {
+
+      // if appropriate status, add to count
+      if (tree(i,3) == status) {
+         status_count++;
+
+         // when count reaches randomly selected value
+         // get the index in the tree
+         if (status_count == rand_ind) {
+            index_parent_tree = i;
+         }
+      }
+   }
+
+   //Rprintf("%i ", status);
+   //Rprintf("%i ", max_status);
+   //Rprintf("%i ", rand_ind);
+   //Rprintf("%i ", index_parent_tree);       
+
+   return index_parent_tree;
+}
+
+NumericMatrix resize_numeric_matrix(NumericMatrix nm, int n_rows, int n_cols) {
+
+    NumericMatrix new_nm(n_rows, n_cols); 
+    
+    for (int i=0; i<n_rows; ++i) {
+        for (int j=0; j<n_cols; ++j) {
+            new_nm(i,j) = nm(i,j);
+            //Rprintf("%i ", nm[i,j]);   
+        }
+    }
+
+    return new_nm;
+} 
+
+
+NumericMatrix update_trait(NumericMatrix trait, int trait_vars, NumericMatrix tree, int s, double pp) {
+
+    // generate a matrix of trait increments
+    NumericMatrix t_incs(s, trait_vars);
+    for (int i=0; i<s; ++i) {
+
+        // pp is prob of nascent getting same trait increments 
+        // as parent taxon: 1=always, 0=never
+        int inherit = 1;
+        if (R::runif(0,1) > pp) {
+           inherit = 0;
+        }
+
+        // if nascent
+        int status = tree(i, 3);
+
+        if ( status == 1 && inherit == 1 ) {
+           int parent  = tree(i, 2);
+           
+           // assign parental increments
+           for (int j=0; j<trait_vars; ++j) {  
+              t_incs(i,j) = t_incs(parent,j);
+            }
+        }
+
+        if ( status == 0 || status == 2 || inherit == 0 ) {
+
+           for (int j=0; j<trait_vars; ++j) {  
+              t_incs(i,j) = R::rnorm(0, 1);
+           }
+        }
+    }
+
+    // apply trait increments to traits
+    for (int i=0; i<s; ++i) {
+        for (int j=0; j<trait_vars; ++j) {
+            trait(i,j) = trait(i,j) + t_incs(i,j); 
+        }
+    }
+
+    return trait;
+}
