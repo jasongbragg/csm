@@ -2,6 +2,7 @@
 #' with phenotypic evolution suitable for identifying 
 #' species that are morphologically cryptic
 #'
+#' (Based on models in: )
 #'
 #' @param lam1 - speciation of good species [Required]
 #' @param lam2 - speciation of nascent species [Required]

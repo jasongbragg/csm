@@ -7,7 +7,7 @@ set.seed(98749)
 test_that("birth_only_constant_crown",{
 
    # rough test of pure birth
-   # exp growth with N(0) = 1
+   # exp growth with N(0) = 2
    p <- 5
    n <- 1000
    v <- mat.or.vec(n,1)
@@ -47,7 +47,7 @@ test_that("birth_only_constant_crown",{
 
 })
 
-test_that("birth_death_constant_stem",{
+test_that("birth_death_constant_crown",{
 
    # rough test of pure birth
    # exp growth with N(0) = 1

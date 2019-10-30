@@ -7,16 +7,11 @@ using namespace Rcpp;
 // [[Rcpp::export]]
 List csm(double lam1, double lam2, double lam3, double mu1, double mu2, int crown_or_stem, double pp, double t_step) {
 
-    // Parameters
-    // lam 1 & 2 speciation rates of good and nascent, respectively
-    // lam 3 rate nascent to good
-    // mu  1 & 2 extinction rates of good and nascent, respectively
-    // crown_or_stem: crown = 0; stem =1
-    // pp prob phenotype jump inherited from parent
-    // t_step time step for phenotype updates
+    // double pp = 0.01;
+    // int crown_or_stem = 0;
 
     // max time, all normalized to 1
-    double t_max = 1.0000;
+    double t_max = 1.0;
 
     // max number of Gillespie increments
     int ginc_max = 100000;
@@ -74,7 +69,6 @@ List csm(double lam1, double lam2, double lam3, double mu1, double mu2, int crow
     // initialize count of Gillespie increments
     int n_ginc = 0;
 
-    //////////////////////////////////////////////////////////
     // main loop for speciation
     while (t < t_max && number_tot > 0 && n_ginc < ginc_max) {
 
@@ -88,70 +82,62 @@ List csm(double lam1, double lam2, double lam3, double mu1, double mu2, int crow
         p_mu1  = mu1  * (double) number_good;
         p_mu2  = mu2  * (double) number_nasc;
         p_tot  = p_lam1 + p_lam2 + p_lam3 + p_mu1 + p_mu2;
+        
 
-        // debug
-        // Rprintf(" p_tot: %f\n", p_tot);
-        // Rprintf(" p_lam1: %f\n", p_lam1);
-        // Rprintf(" p_lam2: %f\n", p_lam2);        
-
-
-        // Gillespie time step size
+        // next Gillespie time step
         n_ginc = n_ginc + 1;
         v_rand = R::runif(0,1);
         t_ginc = -1.0 * std::log(v_rand) / p_tot;
-        //Rprintf(" Gillespie step: %f\n", (t+t_ginc));
+        //Rprintf(" Gillespie step: %f\n", t_ginc);
 
-        // if first increment:
-        //    - stem, make increment, add second individual 
-        //    - crown, set incremenet to 0, need to initialized
-        //      with number_good(0)=1, and number_nascent(0)=1 
-        if (crown_or_stem == 0 && n_ginc == 1 ) {
-           t_ginc = 0.0000 ;
+        if (crown_or_stem == 1 && n_ginc == 1 ) {
+           t      = t + t_ginc;
         }
 
-        double t_event = t + t_ginc;
+
+        // implement reaction
+        reaction = get_reaction(p_lam1, p_lam2, p_lam3, p_mu1, p_mu2);
+
+        if (reaction == 1) { tree = speciation_good( tree, number_good, t, s );  number_nasc++; s++;}
+        if (reaction == 2) { tree = speciation_nasc( tree, number_nasc, t, s );  number_nasc++; s++;}
+        if (reaction == 3) { tree = completion_nasc( tree, number_nasc, t, s );  number_good++; number_nasc--;}
+        if (reaction == 4) { tree = extinction_good( tree, number_good, t, s );  number_good--;}
+        if (reaction == 5) { tree = extinction_nasc( tree, number_nasc, t, s );  number_nasc--;}
+
+        number_tot = number_good + number_nasc;
+
+        // next Gillespie time step
+        //n_ginc = n_ginc + 1;
+        //v_rand = R::runif(0,1);
+        //t_ginc = -1.0 * std::log(v_rand) / p_tot;
+        //Rprintf(" Gillespie step: %f\n", t_ginc);
+
+        //if (crown_or_stem == 1 && n_ginc == 1 ) {
+        //   t      = t + t_ginc;
+        //}
+
+
+        // newly made species traits
+        if (reaction == 1 || reaction == 2) {
+           int parent  = tree((s-1), 2);
+           //Rprintf(" s id   : %i\n", s);  
+           //Rprintf(" number   : %i\n", number_tot);  
+           //Rprintf(" parent id   : %i\n", parent);  
+
+           for (int i=0; i<trait_vars; ++i) {
+              trait((s-1), i) = trait(parent, i) ;
+           }
+        }
 
         // updates to traits
-        // increment up to next Gillespie step, or t_max, whichever is sooner
+        if ( tt <= (t + t_ginc) && tt <= t_max ) {
            
-        while ( (tt + t_step) < (t + t_ginc) && (tt + t_step) <= (t_max) ) {
-           trait = update_trait(trait, trait_vars, tree, s, pp);
-           tt = tt + t_step;
-           //Rprintf(" uniform step   : %f\n", tt); 
-        } 
-
-
-        if (t_event < t_max) {
-
-           // implement reaction
-           reaction = get_reaction(p_lam1, p_lam2, p_lam3, p_mu1, p_mu2);
-
-           if (crown_or_stem == 0 && n_ginc == 1 ) {
-              reaction = 1 ;
-           }
-
-           if (reaction == 1) { tree = speciation_good( tree, number_good, t_event, s );  number_nasc++; s++;}
-           if (reaction == 2) { tree = speciation_nasc( tree, number_nasc, t_event, s );  number_nasc++; s++;}
-           if (reaction == 3) { tree = completion_nasc( tree, number_nasc, t_event, s );  number_good++; number_nasc--;}
-           if (reaction == 4) { tree = extinction_good( tree, number_good, t_event, s );  number_good--;}
-           if (reaction == 5) { tree = extinction_nasc( tree, number_nasc, t_event, s );  number_nasc--;}
-
-           number_tot = number_good + number_nasc;
-
-           // newly made species traits
-           if (reaction == 1 || reaction == 2) {
-              int parent  = tree((s-1), 2);
-              //Rprintf(" s id   : %i\n", s);  
-              //Rprintf(" number   : %i\n", number_tot);  
-              //Rprintf(" parent id   : %i\n", parent);  
-
-              for (int i=0; i<trait_vars; ++i) {
-                 trait((s-1), i) = trait(parent, i) ;
-              }
-           }
-
+           while ( tt <= (t + t_ginc) && tt <= t_max ) {
+              trait = update_trait(trait, trait_vars, tree, s, pp);
+              //Rprintf(" uniform step   : %f\n", tt); 
+              tt = tt + t_step;
+           } 
         }
-
 
         // keep a trace -- useful for debug
         trace(n_ginc,0) = reaction;
@@ -160,28 +146,23 @@ List csm(double lam1, double lam2, double lam3, double mu1, double mu2, int crow
         trace(n_ginc,3) = number_tot;
         trace(n_ginc,4) = t;
         trace(n_ginc,5) = tt;
-        trace(n_ginc,6) = t_event;
+        trace(n_ginc,6) = t_ginc;
         // end trace
 
         // update time, with Gillespie step
         t      = t + t_ginc;
 
-    } 
-    // end main loop for speciation
-    //////////////////////////////////////////////////////////
-
-
-    // Process run for export
+    } // end main loop for speciation
 
     // make some nicer objects to return
     NumericMatrix rtrace = resize_numeric_matrix(trace, (n_ginc+1), trace_vars); 
     NumericMatrix rtree  = resize_numeric_matrix(tree, s, tree_vars); 
     NumericMatrix rtrait = resize_numeric_matrix(trait, s, trait_vars); 
 
-    // record status
     if ( t >= t_max )           { terminate_status(0) = "timeout"; }
     if ( number_tot <= 0 )      { terminate_status(0) = "extinction";}
     if ( n_ginc >= ginc_max )   { terminate_status(0) = "overstep"; }
+
 
     // bundle stuff into a list and return
     List result =

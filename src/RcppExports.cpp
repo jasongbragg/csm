@@ -5,6 +5,32 @@
 
 using namespace Rcpp;
 
+// get_reaction
+int get_reaction(double p_lam1, double p_lam2, double p_lam3, double p_mu1, double p_mu2);
+RcppExport SEXP _csm_get_reaction(SEXP p_lam1SEXP, SEXP p_lam2SEXP, SEXP p_lam3SEXP, SEXP p_mu1SEXP, SEXP p_mu2SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type p_lam1(p_lam1SEXP);
+    Rcpp::traits::input_parameter< double >::type p_lam2(p_lam2SEXP);
+    Rcpp::traits::input_parameter< double >::type p_lam3(p_lam3SEXP);
+    Rcpp::traits::input_parameter< double >::type p_mu1(p_mu1SEXP);
+    Rcpp::traits::input_parameter< double >::type p_mu2(p_mu2SEXP);
+    rcpp_result_gen = Rcpp::wrap(get_reaction(p_lam1, p_lam2, p_lam3, p_mu1, p_mu2));
+    return rcpp_result_gen;
+END_RCPP
+}
+// choose_random_integer
+int choose_random_integer(int max_value);
+RcppExport SEXP _csm_choose_random_integer(SEXP max_valueSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type max_value(max_valueSEXP);
+    rcpp_result_gen = Rcpp::wrap(choose_random_integer(max_value));
+    return rcpp_result_gen;
+END_RCPP
+}
 // csm
 List csm(double lam1, double lam2, double lam3, double mu1, double mu2, int crown_or_stem, double pp, double t_step);
 RcppExport SEXP _csm_csm(SEXP lam1SEXP, SEXP lam2SEXP, SEXP lam3SEXP, SEXP mu1SEXP, SEXP mu2SEXP, SEXP crown_or_stemSEXP, SEXP ppSEXP, SEXP t_stepSEXP) {
@@ -25,6 +51,8 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_csm_get_reaction", (DL_FUNC) &_csm_get_reaction, 5},
+    {"_csm_choose_random_integer", (DL_FUNC) &_csm_choose_random_integer, 1},
     {"_csm_csm", (DL_FUNC) &_csm_csm, 8},
     {NULL, NULL, 0}
 };
